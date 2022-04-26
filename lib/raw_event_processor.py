@@ -67,7 +67,7 @@ class RawEventProcessor():
             JOIN atomic.us_vibe_cros_event_context_1 ctx ON ae.root_id = ctx.root_id
         WHERE
             ae.root_tstamp > '2022-04-07  07:35:00.000'
-            --AND ctx.serial NOT LIKE '%OEM%'
+            AND ctx.serial NOT LIKE '%OEM%'
         ORDER BY ctx.serial, ae.root_tstamp, ae.action
         --LIMIT 10
         '''
