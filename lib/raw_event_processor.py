@@ -57,17 +57,17 @@ class RawEventProcessor():
             ctx.serial,
             ctx.user_id,
             ae.action,
-            ae.root_tstamp AS tstamp,
+            e.derived_tstamp AS tstamp,
             ctx.session_id,
             ctx.session_type
         FROM
             atomic.us_vibe_cros_action_event_1 ae
             JOIN atomic.us_vibe_cros_event_context_1 ctx ON ae.root_id = ctx.root_id
+            JOIN atomic.events e ON e.event_id = ctx.root_id
         WHERE
-            ae.root_tstamp > '2022-04-07  07:35:00.000'
+            e.derived_tstamp> '2022-04-07  07:35:00.000'
             AND ctx.serial NOT LIKE '%OEM%'
-        ORDER BY ctx.serial, ae.root_tstamp, ae.action
-        --LIMIT 10
+        ORDER BY ctx.serial, e.derived_tstamp, ae.action
         """
         # 排序后就可以对比上下两条数据，排action可以保证auto session end在 session end之前被处理
         self.raw_events_cur.execute(select_new_raw_events_sql)
@@ -355,6 +355,7 @@ class RawEventProcessor():
         """
         current_event_type = current_event['action']
         if current_event_type in ['ExitSession', 'AutoEndSession']:
+            """Do not include Idle event type here"""
             return
 
         session = {
@@ -380,7 +381,12 @@ class RawEventProcessor():
         if row_count == 0:
             self.update_pending_session_dict(session)
             self.insert_pending_session_into_database(session)
-            self.insert_custom_session_into_database(session, SESSION_START, update_pending_session=False)
+            if new_state != State.REAL_IDLE:
+                """
+                This is a weird scenario when Idle event is the first in a raw session we encouter.
+                We don't send SessionStart in this case but we do initiate a pending session.
+                """
+                self.insert_custom_session_into_database(session, SESSION_START, update_pending_session=False)
         else:
             raise DatabaseOutOfSyncError
 

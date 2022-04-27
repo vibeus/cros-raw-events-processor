@@ -1,5 +1,6 @@
 __pycache__/
 venv
-output.txt
+output*.txt
 pending-session-config.json
 raw-event-config.json
+connect_postgres_test.py
