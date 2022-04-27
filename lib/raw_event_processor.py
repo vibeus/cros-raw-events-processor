@@ -72,7 +72,7 @@ class RawEventProcessor():
         # 排序后就可以对比上下两条数据，排action可以保证auto session end在 session end之前被处理
         self.raw_events_cur.execute(select_new_raw_events_sql)
         self.raw_events_rows = raw_events_cur.fetchall()
-        LOGGER.info(f"{len(self.raw_events_rows)}")
+        LOGGER.info(f"{len(self.raw_events_rows)} raw events found.")
 
         self.pending_sessions_cur.execute("CREATE SCHEMA IF NOT EXISTS public")
         create_pending_sessions_table_sql = """
