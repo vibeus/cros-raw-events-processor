@@ -13,7 +13,8 @@ def main():
         cros_sessions_config=cros_sessions_config,
         intermediate_storage_config=intermediate_storage_config,
         last_processor_state=args.state,
-        debug=args.debug
+        debug=args.debug,
+        drop=args.drop
     )
     if args.drop:
         processor.drop_tables()
