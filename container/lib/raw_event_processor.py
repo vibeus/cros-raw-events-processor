@@ -42,7 +42,7 @@ class RawEventProcessor():
     state_bookmark_key = 'max_raw_event_receiving_time'
     raw_event_bookmark_key = 'collector_tstamp'
 
-    def __init__(self, raw_events_config, cros_sessions_config, intermediate_storage_config, last_processor_state, debug):
+    def __init__(self, raw_events_config, cros_sessions_config, intermediate_storage_config, last_processor_state, debug, drop):
         LOGGER.info("Initiate RawEventProcessor.")
         self.last_processor_state = last_processor_state
         self.current_proccesor_state = {}
@@ -56,6 +56,9 @@ class RawEventProcessor():
         self.raw_events_cur = self.connect_postgres(raw_events_config)
         self.cros_sessions_cur = self.connect_postgres(cros_sessions_config)
         self.intermediate_storage_cur = self.cros_sessions_cur if intermediate_storage_config is None else self.connect_postgres(intermediate_storage_config)
+
+        if drop:
+            return
 
         self.pending_sessions = {}
         self.pending_sessions_sql_tasks = {}
