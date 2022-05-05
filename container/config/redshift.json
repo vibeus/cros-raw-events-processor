@@ -1,0 +1,8 @@
+{
+  "database": "snowplow",
+  "host": "snowplow.cmoznlylvbie.us-west-2.redshift.amazonaws.com",
+  "user": "analysis",
+  "password": "env[REDSHIFT_PASSWORD]",
+  "port": "5439",
+  "start_date": "2022-01-01"
+}
