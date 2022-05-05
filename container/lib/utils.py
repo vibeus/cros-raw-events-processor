@@ -73,15 +73,19 @@ def parse_args():
         '-i', '--intermediate',
         help='Intermediate storage target config.')
 
-
     parser.add_argument(
         '-s', '--state',
         help='State file.')
 
     parser.add_argument(
-        '-d', '--debug',
+        '--debug',
         action="store_true",
         help='Debug mode.')
+
+    parser.add_argument(
+        '--drop',
+        action="store_true",
+        help='Drop tables.')
 
     args = parser.parse_args()
     if args.raw:

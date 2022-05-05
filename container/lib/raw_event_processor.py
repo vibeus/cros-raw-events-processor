@@ -146,6 +146,20 @@ class RawEventProcessor():
         cur = connection.cursor(cursor_factory=RealDictCursor)
         return cur
 
+    def drop_tables(self):
+        self.drop_cros_sessions()
+        self.drop_intermediate_storage()
+
+    def drop_cros_sessions(self):
+        drop_table_sql = "DROP TABLE IF EXISTS cros_derived.cros_sessions"
+        self.cros_sessions_cur.execute(drop_table_sql)
+        self.cros_sessions_cur.connection.commit()
+
+    def drop_intermediate_storage(self):
+        drop_table_sql = "DROP TABLE IF EXISTS cros_derived.pending_sessions"
+        self.intermediate_storage_cur.execute(drop_table_sql)
+        self.intermediate_storage_cur.connection.commit()
+
     def change_session_state(self, current_event):
         serial = current_event['serial']
         pending_session = self.pending_sessions.get(serial)

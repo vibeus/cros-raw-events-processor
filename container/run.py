@@ -15,7 +15,10 @@ def main():
         last_processor_state=args.state,
         debug=args.debug
     )
-    processor.process_raw_events()
+    if args.drop:
+        processor.drop_tables()
+    else:
+        processor.process_raw_events()
 
 if __name__ == '__main__':
     main()
