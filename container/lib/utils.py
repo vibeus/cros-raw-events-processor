@@ -49,9 +49,9 @@ def parse_args():
     Parses the command-line arguments mentioned in the SPEC and the
     BEST_PRACTICES documents:
 
-    -r,--raw      Raw event source config
-    -p,--pending  Pending session target config
-    -c,--custom   Custom cros session target config
+    -r,--raw            Raw event source config
+    -c,--cros           Cros sessions target config
+    -i,--intermediate   Intermediate storage target config
 
     Returns the parsed args object from argparse. For each argument that
     point to JSON files, we will automatically
@@ -73,15 +73,19 @@ def parse_args():
         '-i', '--intermediate',
         help='Intermediate storage target config.')
 
-
     parser.add_argument(
         '-s', '--state',
         help='State file.')
 
     parser.add_argument(
-        '-d', '--debug',
+        '--debug',
         action="store_true",
         help='Debug mode.')
+
+    parser.add_argument(
+        '--drop',
+        action="store_true",
+        help='Drop tables.')
 
     args = parser.parse_args()
     if args.raw:

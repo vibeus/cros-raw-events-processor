@@ -13,9 +13,13 @@ def main():
         cros_sessions_config=cros_sessions_config,
         intermediate_storage_config=intermediate_storage_config,
         last_processor_state=args.state,
-        debug=args.debug
+        debug=args.debug,
+        drop=args.drop
     )
-    processor.process_raw_events()
+    if args.drop:
+        processor.drop_tables()
+    else:
+        processor.process_raw_events()
 
 if __name__ == '__main__':
     main()

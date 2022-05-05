@@ -42,7 +42,7 @@ class RawEventProcessor():
     state_bookmark_key = 'max_raw_event_receiving_time'
     raw_event_bookmark_key = 'collector_tstamp'
 
-    def __init__(self, raw_events_config, cros_sessions_config, intermediate_storage_config, last_processor_state, debug):
+    def __init__(self, raw_events_config, cros_sessions_config, intermediate_storage_config, last_processor_state, debug, drop):
         LOGGER.info("Initiate RawEventProcessor.")
         self.last_processor_state = last_processor_state
         self.current_proccesor_state = {}
@@ -56,6 +56,9 @@ class RawEventProcessor():
         self.raw_events_cur = self.connect_postgres(raw_events_config)
         self.cros_sessions_cur = self.connect_postgres(cros_sessions_config)
         self.intermediate_storage_cur = self.cros_sessions_cur if intermediate_storage_config is None else self.connect_postgres(intermediate_storage_config)
+
+        if drop:
+            return
 
         self.pending_sessions = {}
         self.pending_sessions_sql_tasks = {}
@@ -145,6 +148,22 @@ class RawEventProcessor():
         )
         cur = connection.cursor(cursor_factory=RealDictCursor)
         return cur
+
+    def drop_tables(self):
+        self.drop_cros_sessions()
+        self.drop_intermediate_storage()
+
+    def drop_cros_sessions(self):
+        drop_table_sql = "DROP TABLE IF EXISTS cros_derived.cros_sessions"
+        self.cros_sessions_cur.execute(drop_table_sql)
+        self.cros_sessions_cur.connection.commit()
+        LOGGER.info("Drop cros_derived.cros_sessions")
+
+    def drop_intermediate_storage(self):
+        drop_table_sql = "DROP TABLE IF EXISTS cros_derived.pending_sessions"
+        self.intermediate_storage_cur.execute(drop_table_sql)
+        self.intermediate_storage_cur.connection.commit()
+        LOGGER.info("Drop cros_derived.pending_sessions")
 
     def change_session_state(self, current_event):
         serial = current_event['serial']
