@@ -49,9 +49,9 @@ def parse_args():
     Parses the command-line arguments mentioned in the SPEC and the
     BEST_PRACTICES documents:
 
-    -r,--raw      Raw event source config
-    -p,--pending  Pending session target config
-    -c,--custom   Custom cros session target config
+    -r,--raw            Raw event source config
+    -c,--cros           Cros sessions target config
+    -i,--intermediate   Intermediate storage target config
 
     Returns the parsed args object from argparse. For each argument that
     point to JSON files, we will automatically
