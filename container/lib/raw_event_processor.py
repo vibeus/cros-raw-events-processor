@@ -154,11 +154,13 @@ class RawEventProcessor():
         drop_table_sql = "DROP TABLE IF EXISTS cros_derived.cros_sessions"
         self.cros_sessions_cur.execute(drop_table_sql)
         self.cros_sessions_cur.connection.commit()
+        LOGGER.info("Drop cros_derived.cros_sessions")
 
     def drop_intermediate_storage(self):
         drop_table_sql = "DROP TABLE IF EXISTS cros_derived.pending_sessions"
         self.intermediate_storage_cur.execute(drop_table_sql)
         self.intermediate_storage_cur.connection.commit()
+        LOGGER.info("Drop cros_derived.pending_sessions")
 
     def change_session_state(self, current_event):
         serial = current_event['serial']
