@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import argparse
+import subprocess
+
+def main(args):
+    version = args.version
+    image_name = f"cros-raw-events-processor:{version}"
+    tag_name = f"663354718506.dkr.ecr.us-west-2.amazonaws.com/vibe/cros-raw-events-processor:{version}"
+    subprocess.check_call(["docker", "build", "-t", image_name, "container"])
+    if args.push:
+        subprocess.check_call(["docker", "tag", image_name, tag_name])
+        subprocess.check_call(["docker", "push", tag_name])
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument(
+        "-p", "--push", dest="push", action="store_true", help="push to remote"
+    )
+    parser.add_argument(
+        "-v", "--version", dest="version", default="latest", help="image version"
+    )
+
+    args = parser.parse_args()
+    main(args)
