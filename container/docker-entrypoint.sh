@@ -44,7 +44,7 @@ fi
 
 ./run.py -r $SOURCE_CONFIG -c $TARGET_CONFIG $ADDITIONAL_TEMP_CONFIG_ARG $STATE_ARG $MODE_ARG > $CURR_STATE
 
-if ["$MODE" = "debug"]; then
+if [ "$MODE" = "debug" ]; then
   echo "Do not save state file in debug mode."
 else
   echo "Saving state to $STATE_FILE..."
