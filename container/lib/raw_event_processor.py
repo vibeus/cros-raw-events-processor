@@ -62,6 +62,7 @@ class RawEventProcessor():
 
         self.pending_sessions = {}
         self.pending_sessions_sql_tasks = {}
+        self.temp_stored_start_or_end = []
 
         select_new_raw_events_sql = f"""
         SELECT
@@ -78,7 +79,7 @@ class RawEventProcessor():
             JOIN atomic.events e ON e.event_id = ctx.root_id
         WHERE
             e.{RawEventProcessor.raw_event_bookmark_key} > '{self.last_max_raw_event_receiving_time}' -- Use collector_tstamp here
-            AND ctx.serial NOT LIKE '%OEM%'
+            AND ctx.serial NOT LIKE '%OEM%' AND ctx.serial <> '123456789'
         ORDER BY ctx.serial, e.derived_tstamp, ae.action
         """
         self.raw_events_cur.execute(select_new_raw_events_sql)
@@ -187,7 +188,12 @@ class RawEventProcessor():
 
         if current_event_type in ['ExitSession', 'AutoEndSession']:
             if old_state != State.REAL_IDLE:
-                self.insert_cros_session_into_database(pending_session, SESSION_END, update_pending_session=False)
+                updates.update({
+                    'last_event_time': current_event_time
+                })
+                self.update_pending_session_dict(pending_session, updates)
+
+                self.insert_cros_session_into_temp_arr(pending_session, SESSION_END)
             self.delete_pending_session(pending_session)
 
         elif old_state == State.REAL_IDLE:
@@ -199,18 +205,19 @@ class RawEventProcessor():
                 pass
             else:
                 updates.update({
+                    'start_time': current_event_time,
                     'last_event_time': current_event_time,
-                    'last_state': State.PLAYING_VIDEO if current_event_type in ['VideoStart', 'AudioStart'] else State.WAIT_INPUT,
+                    'last_state': State.PLAYING_VIDEO if current_event_type in ['StartVideo', 'StartAudio'] else State.WAIT_INPUT,
                     'split_counter': split_counter + 1
                 })
                 self.update_pending_session_dict(pending_session, updates)
-                self.insert_cros_session_into_database(pending_session, SESSION_START)
+                self.insert_cros_session_into_temp_arr(pending_session, SESSION_START)
 
         elif old_state == State.PLAYING_VIDEO:
             updates.update({
                 'last_event_time': current_event_time
             })
-            if current_event_type in ['AudioEnd', 'VideoEnd']:
+            if current_event_type in ['StopAudio', 'StopVideo']:
                 updates.update({
                     'last_state': State.WAIT_INPUT
                 })
@@ -229,8 +236,8 @@ class RawEventProcessor():
                     'last_state': State.REAL_IDLE
                 })
                 self.update_pending_session_dict(pending_session, updates)
-                self.insert_cros_session_into_database(pending_session, SESSION_END)
-            elif current_event_type in ['VideoStart', 'AudioStart']:
+                self.insert_cros_session_into_temp_arr(pending_session, SESSION_END)
+            elif current_event_type in ['StartVideo', 'StartAudio']:
                 updates.update({
                     'last_event_time': current_event_time,
                     'last_state': State.PLAYING_VIDEO
@@ -303,7 +310,7 @@ class RawEventProcessor():
                         pass
                     else:
                         LOGGER.info("Create SessionEnd event for the pending session since its state is not REAL_IDLE.")
-                        self.insert_cros_session_into_database(pending_session_with_same_serial, SESSION_END, update_pending_session=False)
+                        self.insert_cros_session_into_temp_arr(pending_session_with_same_serial, SESSION_END, update_pending_session=False)
 
                     self.delete_pending_session(pending_session_with_same_serial)
                     self.initiate_pending_session(current_event)
@@ -354,10 +361,11 @@ class RawEventProcessor():
             LOGGER.info("Found pending session.")
             if last_event['session_id'] != pending_session['raw_session_id']:
                 raise UnmatchedPendingSessionError
-            row_count = self.get_pending_session_count_from_database(pending_session)
-            if row_count != 1:
+            # row_count = self.get_pending_session_count_from_database(pending_session)
+            row_count = self.pending_sessions.get(pending_session['serial'], 0)
+            if row_count == 0:
                 raise DatabaseOutOfSyncError
-            self.update_pending_session_in_database(pending_session)
+            # self.update_pending_session_in_database2(pending_session)
         else:
             """
             If there is no pending session, it means we have done everything with regard to last session.
@@ -373,23 +381,51 @@ class RawEventProcessor():
     def build_cros_session_id(self, session):
         return f"{session['raw_session_id']}/{session['split_counter']}"
 
-    def insert_cros_session_into_database(self, session, start_or_end, update_pending_session=True):
+    def insert_cros_sessions_into_database(self, sessions):
         """
         First update session in cros_derived.pending_sessions, and then store the following fields from
         session into cros sessions table.
         """
         cros_sessions_columns = 'serial, user_id, session_id, tstamp, session_type, action'
+        session_value_string = str(sessions)[1:-1]
 
-        if update_pending_session:
-            self.update_pending_session_in_database(session)
 
-        cros_session_id = self.build_cros_session_id(session)
         sql = f"""
         INSERT INTO cros_derived.cros_sessions ({cros_sessions_columns})
-        VALUES ('{session['serial']}', '{session['user_id']}', '{cros_session_id}', '{session['last_event_time']}', '{session['session_type']}', '{start_or_end}')
+        VALUES {session_value_string}
         """
         self.cros_sessions_cur.execute(sql)
         LOGGER.info(sql)
+
+    def insert_cros_session_into_temp_arr(self, session, start_or_end, update_pending_session=True):
+        if update_pending_session:
+            self.pending_sessions[session['serial']].update({'last_event_time': session['last_event_time'],
+                                                             'last_state': session['last_state'],
+                                                                'split_counter': session['split_counter']} )
+
+        cros_session_id = self.build_cros_session_id(session)
+        self.temp_stored_start_or_end.append((session['serial'], session['user_id'], cros_session_id, str(session['last_event_time']), session['session_type'], start_or_end))
+        LOGGER.info("Insert a session into temp arr values" + str(session['serial'] + session['user_id'] + cros_session_id + str(session['last_event_time']) + session['session_type'] + start_or_end))
+
+
+
+    # def insert_cros_session_into_database(self, session, start_or_end, update_pending_session=True):
+    #     """
+    #     First update session in cros_derived.pending_sessions, and then store the following fields from
+    #     session into cros sessions table.
+    #     """
+    #     cros_sessions_columns = 'serial, user_id, session_id, tstamp, session_type, action'
+    #
+    #     if update_pending_session:
+    #         self.update_pending_session_in_database(session)
+    #
+    #     cros_session_id = self.build_cros_session_id(session)
+    #     sql = f"""
+    #     INSERT INTO cros_derived.cros_sessions ({cros_sessions_columns})
+    #     VALUES ('{session['serial']}', '{session['user_id']}', '{cros_session_id}', '{session['last_event_time']}', '{session['session_type']}', '{start_or_end}')
+    #     """
+    #     self.cros_sessions_cur.execute(sql)
+    #     LOGGER.info(sql)
 
     def initiate_pending_session(self, current_event):
         """
@@ -419,18 +455,25 @@ class RawEventProcessor():
             'last_state': new_state
         })
 
-        row_count = self.get_pending_session_count_from_database(session)
+        # row_count = self.get_pending_session_count_from_database(session) # 这里能不能用pending session dict
+        row_count = self.pending_sessions.get(session['serial'], 0)
         if row_count == 0:
             self.update_pending_session_dict(session)
-            self.insert_pending_session_into_database(session)
+            # self.insert_pending_session_into_database(session)
+            self.insert_pending_session_into_dict(session)
             if new_state != State.REAL_IDLE:
                 """
                 This is a weird scenario when Idle event is the first in a raw session we encouter.
                 We don't send SessionStart in this case but we do initiate a pending session.
                 """
-                self.insert_cros_session_into_database(session, SESSION_START, update_pending_session=False)
+                self.insert_cros_session_into_temp_arr(session, SESSION_START, update_pending_session=False)
         else:
             raise DatabaseOutOfSyncError
+
+    def insert_pending_session_into_dict(self, session):
+        self.pending_sessions[session['serial']] = dict(session)
+        LOGGER.info('Insert into pending session  dict' + str(dict(session)))
+
 
     def insert_pending_session_into_database(self, session):
         pending_sessions_columns = 'serial, user_id, raw_session_id, start_time, last_event_time, session_type, last_state, split_counter'
@@ -440,6 +483,8 @@ class RawEventProcessor():
         """
         self.intermediate_storage_cur.execute(sql)
         LOGGER.info(sql)
+
+
 
     def update_pending_session_in_database(self, session):
         sql = f"""
@@ -453,25 +498,55 @@ class RawEventProcessor():
         self.intermediate_storage_cur.execute(sql)
         LOGGER.info(sql)
 
+    def update_pending_sessions_in_database(self):
+        sql = f'''
+        DELETE FROM cros_derived.pending_sessions
+        '''
+        self.intermediate_storage_cur.execute(sql)
+
+        pending_sessions_columns = 'serial, user_id, raw_session_id, start_time, last_event_time, session_type, split_counter, last_state'
+        pending_session_value_string = ''
+        pending_sessions_copy = self.pending_sessions.copy()
+        for v in pending_sessions_copy.values():
+            LOGGER.info(v.values())
+            for key, value in v.items():
+                if key == 'start_time' or key == 'last_event_time':
+                    v[key] = str(v[key])
+        for v in pending_sessions_copy.values():
+            pending_session_value_string += str(tuple(v.values()))
+            pending_session_value_string += ','
+        pending_session_value_string = pending_session_value_string[:-1]
+
+        LOGGER.info(pending_session_value_string)
+
+        sql = f'''
+               INSERT INTO cros_derived.pending_sessions ({pending_sessions_columns})
+        VALUES {pending_session_value_string}
+        '''
+        self.intermediate_storage_cur.execute(sql)
+
     def delete_pending_session(self, session):
         serial = session['serial']
         raw_session_id = session['raw_session_id']
         if self.pending_sessions.get(serial, {}).get('raw_session_id') != raw_session_id:
             raise UnmatchedPendingSessionError
-        sql = f"DELETE FROM cros_derived.pending_sessions WHERE serial = '{serial}'"
-        self.intermediate_storage_cur.execute(sql)
+        # sql = f"DELETE FROM cros_derived.pending_sessions WHERE serial = '{serial}'"
+        # self.intermediate_storage_cur.execute(sql)
         del self.pending_sessions[serial]
-        LOGGER.info(sql)
+        # LOGGER.info(sql)
 
     def update_processor_state(self, updates):
         self.current_proccesor_state.update(updates)
 
     def finish(self):
         """
-        1. Commit database changes.
-        2. Write new state.
+        1. Do insert/update in database
+        2. Commit database changes.
+        3. Write new state.
         """
         if not self.debug:
+            self.insert_cros_sessions_into_database(self.temp_stored_start_or_end)
+            self.update_pending_sessions_in_database()
             self.intermediate_storage_cur.connection.commit()
             if self.intermediate_storage_cur != self.cros_sessions_cur:
                 self.cros_sessions_cur.connection.commit()
