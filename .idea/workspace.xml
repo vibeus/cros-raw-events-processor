@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9aa57e6f-39d9-4bb6-89bf-1d074e96f104" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/container/lib/raw_event_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/container/lib/raw_event_processor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -94,7 +94,7 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/container/lib/raw_event_processor.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="248">
+            <state relative-caret-position="6781">
               <caret line="506" column="127" selection-start-line="506" selection-start-column="127" selection-end-line="506" selection-end-column="127" />
               <folding>
                 <element signature="e#0#30#0" expanded="true" />
@@ -212,6 +212,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
@@ -246,12 +247,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1650964699695</updated>
-      <workItem from="1650964703000" duration="69354000" />
+      <workItem from="1650964703000" duration="69631000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="69354000" />
+    <option name="totallyTimeSpent" value="69631000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="1680" y="0" width="2560" height="1440" extended-state="0" />
@@ -410,7 +411,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/container/lib/raw_event_processor.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="248">
+        <state relative-caret-position="6781">
           <caret line="506" column="127" selection-start-line="506" selection-start-column="127" selection-end-line="506" selection-end-column="127" />
           <folding>
             <element signature="e#0#30#0" expanded="true" />

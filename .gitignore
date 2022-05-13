@@ -6,3 +6,4 @@ connect_postgres_test.py
 .env
 *state.json
 !template-config.json
+.DS_Store
